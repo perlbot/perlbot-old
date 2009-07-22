@@ -1,0 +1,262 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+   "http://www.w3.org/TR/html4/strict.dtd">
+
+<html>
+
+<head>
+
+	<meta http-equiv="Content-Type" content="text/html;charset=iso-8859-1">
+
+	<title>Welcome to my fabulous website!</title>
+	
+	<style type="text/css">
+
+	body
+	{
+		font-family: Arial, Helvetica, sans-serif;
+	}
+
+	img
+	{
+		border: 0;
+	}
+
+	table, tr, td, th
+	{
+		border: 1px solid #112266;
+		padding: .2em;
+	}
+
+	.centered
+	{
+		text-align: center;
+	}
+
+	h1
+	{
+		font-size: 150%;
+		text-align: center;
+	}
+
+	h2
+	{
+		font-size: 135%;
+		text-decoration: underline;
+	}
+
+	h3
+	{
+		font-size: 120%;
+	}
+
+	</style>
+	
+</head>
+
+
+<body>
+
+
+<h1>Factoid database design for Chrisbot</h1>
+
+<p class="centered">
+By Chris Angell aka <a href="mailto:chris@chrisangell.com" title="Email Chris62vw">Chris62vw</a>
+</p>
+
+<p>
+Below is a proposed design for an irc bot factoid database that supports fact aliasing and the locking of fact aliases and fact definitions.
+Every "factoid" is really an alias to a definition.  A change to an alias' value actually changes the underlying definitions.  An alias to another alias will be treated
+as an alias to a fact who has the same def_id as the target alias.
+</p>
+
+<p>
+The database used is <a href="http://www.sqlite.org" title="SQLite website">SQLite</a>.
+SQLite is like perl in how it treats values as open containers, much like anything can be stored in a perl scalar.
+SQLite also ignores certain constraints, like primary and foreign keys.  Visit the <a href="http://www.sqlite.org" title="SQLite website">SQLite website</a> for more information.
+</p>
+
+<h2>Table Defintions</h2>
+
+<h3>Table "aliases"</h3>
+
+<p>
+Key:
+<p>
+
+<ul>
+	<li>"alias_id" is an auto-incrementing integer that starts at 1</li>
+	<li>"alias_name" is a simple container</li>
+	<li>"def_id" is a foreign key belonging to the "definitions" table</li>
+	<li>"alias_locked" is either 0, or 1, depending on if the alias is locked or not</li>
+</ul>
+
+<table>
+
+	<tr>
+		<th>alias_id</th>
+		<th>alias_name</th>
+		<th>alias_added_by</th>
+		<th>def_id</th>
+		<th>alias_locked</th>
+	</tr>
+
+	<tr>
+		<td>1</td>
+		<td>foo</td>
+		<td>Jim</td>
+		<td>1</td>
+		<td>1</td>
+	</tr>
+
+	<tr>
+		<td>2</td>
+		<td>fooey</td>
+		<td>Bob</td>
+		<td>1</td>
+		<td>0</td>
+	</tr>
+
+	<tr>
+		<td>3</td>
+		<td>bar</td>
+		<td>Rick</td>
+		<td>2</td>
+		<td>1</td>
+	</tr>
+
+</table>
+
+
+<h3>Table "definitions"</h3>
+
+<p>
+Key:
+</p>
+
+<ul>
+	<li>"def_id" is an auto-incrementing integer that starts at 1</li>
+	<li>"def_value" is a simple container that contains fact values</li>
+	<li>"def_locked" is either 0, or 1, depending on if the definition is locked or not</li>
+</ul>
+
+<table>
+
+	<tr>
+		<th>def_id</th>
+		<th>def_value</th>
+		<th>def_added_by</th>
+		<th>def_locked</th>
+	</tr>
+
+	<tr>
+		<td>1</td>
+		<td>A foo or fooey thing</td>
+		<td>Rick</td>
+		<td>1</td>
+	</tr>
+
+	<tr>
+		<td>2</td>
+		<td>A bar thing</td>
+		<td>Jim</td>
+		<td>0</td>
+	</tr>
+
+</table>
+
+
+<h3>User Access Explanation</h3>
+
+<p>
+User levels will be used so alaises and definitions can be "locked" to prevent change.  There will be five user levels:
+</p>
+
+<ul>
+	<li>0 - trouble user - stick troublemakers in this category</li>
+	<li>1 - average user - everyone is automatically in this category by default, unless user is specifically in another category</li>
+	<li>2 - admin - trusted users</li>
+	<li>3 - sysop - trusted users that have more powers than admins</li>
+	<li>4 - superuser - very trusted users</li>
+	<li>5 - owner - the bot owner</li>
+</ul>
+
+<p>
+The user levels will also be used for other things.  For example,  if someone is abusing the bot, he could be given a level 0 access level.  Then the bot would ignore the user.
+User levels for the factiod database is simply the first step.
+</p>
+
+
+<h3>Table "locked_aliases"</h3>
+
+<p>
+A "locked" alias can only be removed or changed depending on the user level of the user who is attempting to affect the change.
+</p>
+
+<p>
+Key:
+</p>
+
+<ul>
+	<li>"alias_id" is a foreing key from the aliases database</li>
+	<li>"user_id" is a foreing key from the users database  (not shown in this document)</li>
+	<li>"locked_level" is either the access level of the user who locked the alias, or less depending on if the user who locked the alias specified a lower lock level</li>
+</ul>
+
+<table>
+
+	<tr>
+		<th>alias_id</th>
+		<th>user_id</th>
+		<th>locked_level</th>
+	</tr>
+
+	<tr>
+		<td>1</td>
+		<td>1001</td>
+		<td>2</td>
+	</tr>
+
+	<tr>
+		<td>3</td>
+		<td>1034</td>
+		<td>4</td>
+	</tr>
+
+</table>
+
+
+<h3>Table "locked_defs"</h3>
+
+<p>
+A "locked" definition can only be removed or changed depending on the user level of the user who is attempting to affect the change.
+</p>
+
+<p>
+Key:
+</p>
+
+<ul>
+	<li>"def_id" is a foreing key from the definitions database</li>
+	<li>"user_id" is a foreing key from the users database (not shown in this document)</li>
+	<li>"locked_level" is either the access level of the user who locked the alias, or less depending on if the user who locked the alias specified a lower lock level</li>
+</ul>
+
+<table>
+
+	<tr>
+		<th>def_id</th>
+		<th>user_id</th>
+		<th>locked_level</th>
+	</tr>
+
+	<tr>
+		<td>1</td>
+		<td>1001</td>
+		<td>3</td>
+	</tr>
+
+</table>
+
+</body>
+
+</html>

@@ -1,0 +1,7 @@
+figure out more codes to ignore. look at Chrisbot/Parser.pm around line 70
+
+add a Chrisbot::Config::bot_cfg_mandatory. if the key doesn't exist, a fatal error occurs
+
+add functionality so a fact can be appended to:
+perlbot: tutorial is also http://perl-begin.berlios.de/tutorials/
+use :: and "and also" as a delimiter; two different keywords can do two different things

@@ -1,0 +1,44 @@
+=head2 Sun Mar 15 02:49:23 2009: C<Module> L<Geo::IP|Geo::IP>
+
+=over 4
+
+=item *
+
+C<installed into: ~/chrisbot/v3//share/perl/5.10.0>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.37>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sun Mar 15 02:54:20 2009: C<Module> L<Unicode::String|Unicode::String>
+
+=over 4
+
+=item *
+
+C<installed into: /home/simcop2387/chrisbot/v3//share/perl/5.10.0>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 2.09>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+

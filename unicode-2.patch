@@ -1,0 +1,17 @@
+--- Chrisbot/Util/Unicode.pm.orig	2007-06-14 15:27:19.000000000 -0300
++++ Chrisbot/Util/Unicode.pm	2007-06-14 15:28:05.000000000 -0300
+@@ -75,11 +75,12 @@
+ 	if (not $special{$cp} and $cp >= 128 and $cp <= 255) {
+ 		$latin1 = ". ISO-8859-1: " . encode("ISO-8859-1", chr $cp);
+ 	}
+-	my $uname = uname($cp) || 'Unknown/Invalid';
++	my $ucode = sprintf "U+%04X", $cp;
++	my $uname = uname($cp) || 'Unknown';
+ 	my $ublock = ublock($cp) || 'Unknown';
+ 	my $utf8_encoding = join '', map sprintf('\x%02X', ord), split //, encode("utf8", chr($cp));
+ 
+-	return "\cB$char_disp - $uname\cB. Unicode category: $ublock; codepoint: $cp; UTF-8 encoding: $utf8_encoding$latin1";
++	return "\cB$char_disp - $ucode $uname\cB. Unicode category: $ublock; codepoint: $cp; UTF-8 encoding: $utf8_encoding$latin1";
+ 
+ }
+ 

@@ -1,0 +1,557 @@
+package Chrisbot::Common;
+
+# Copyright (c) 2003 Chris Angell (chris62vw@hotmail.com). All rights reserved.
+# This program is free software; you can redistribute it and/or
+# modify it under the same terms as Perl itself.
+
+# IRC Bot version 0.3
+#Common Functions
+
+use strict;
+use warnings;
+
+# perlbot modules
+use Chrisbot::Util::Host;
+use Chrisbot::Util::Math;
+use Chrisbot::Util::TempConv;
+use Chrisbot::Util::Scramble;
+
+# modules used by perlbot modules (including this one)
+use Safe;
+use URI::Find::Schemeless;
+use CGI; # for Vars
+use LWP::Simple ();
+use Geo::IP;
+
+
+sub tell
+{
+
+	my ($self, $to_who, $from_who, $chan, $keyword) = @_;
+
+	defined ( my $info = $self->fact(GET => $keyword) ) or $self->act( SAY => $chan, "$keyword isn't something I know about, $from_who" ), return;
+	
+	$self->act( SAY => $to_who,   qq($from_who wanted you to know about "$keyword": $info) );
+	$self->act( SAY => $from_who, qq(told $to_who: $info) );
+
+}
+
+
+sub host
+{
+
+	my ($self, $type, $addr) = @_;
+	Chrisbot::Util::Host->new($type, $addr);
+
+}
+
+
+sub math
+{
+
+	my ($self, $expr) = @_;
+	Chrisbot::Util::Math->new($expr);
+
+}
+
+
+sub roll
+{
+
+	my ($self, $times, $faces) = @_;
+
+	return "Could you show me how to roll a die zero times?" if $times == 0;
+	return "I didn't know they made a zero sided die!" if $faces == 0;
+
+	return "Sorry, $times is too many times.  Try a number smaller than 101." if $times > 100;
+	return "That die is too big for my feeble brain to handle.  Try one with less sides than 101" if $faces > 100;
+
+	my @totals;
+	
+	for (1 .. $times)
+	{
+
+		push @totals, int(rand $faces) + 1;
+	
+	}
+
+	# create a "safe compartment"
+	my $safe = Safe->new;
+
+	# only the following opcodes will be permitted
+	$safe->permit_only(qw(padany lineseq leaveeval entereval const add));
+
+	# eval $expr in the safe compartment
+	my $grand_total = $safe->reval(join "+", @totals);
+
+	# was there an error?  If so, rip out the relevant error
+	# message and return it.  Otherwise, return the result of the
+	# eval
+	if (my ($err_msg) = $@ =~ /^(.+) at \(eval \d+\) line \d+/)
+	{
+
+		return "Bad Expression: $err_msg";
+
+	}
+	else
+	{
+	
+		return "You rolled @totals for a grand total of $grand_total";
+
+	}
+		
+}
+
+
+sub tempconv
+{
+
+	my ($self, $temp) = @_;
+	Chrisbot::Util::TempConv->new($temp);
+
+}
+
+
+sub scramble
+{
+
+	my ($self, $text) = @_;
+	Chrisbot::Util::Scramble->scramble($text);
+
+}
+
+
+sub fetch_func_url {
+
+	my ($self, $func) = @_;
+
+	# special instances
+	if ($func =~ /^\-?[xX]/)
+	{
+
+		$func = "-X";
+
+	}
+	elsif ($func =~ /^q[xrqw]?/i)
+	{
+
+		$func = "q" 
+		
+	}
+
+	# huge list of functions so we can make sure a requested function exists
+	my @funcs = qw/-X abs accept alarm atan2 bind binmode bless caller chdir chmod chomp chop chown chr chroot close closedir connect continue cos crypt dbmclose dbmopen defined delete die do dump each endgrent endhostent endnetent endprotoent endpwent endservent eof eval exec exists exit exp fcntl fileno flock fork format formline getc getgrent getgrgid getgrnam gethostbyaddr gethostbyname gethostent getlogin getnetbyaddr getnetbyname getnetent getpeername getpgrp getppid getpriority getprotobyname getprotobynumber getprotoent getpwent getpwnam getpwuid getservbyname getservbyport getservent getsockname getsockopt glob gmtime goto grep hex import index int ioctl join keys kill last lc lcfirst length link listen local localtime lock log lstat m map mkdir msgctl msgget msgrcv msgsnd my next no oct open opendir ord our pack package pipe pop pos print printf prototype push q qq qr quotemeta qw qx rand read readdir readline readlink readpipe recv redo ref rename require reset return reverse rewinddir rindex rmdir s scalar seek seekdir select semctl semget semop send setgrent sethostent setnetent setpgrp setpriority setprotoent setpwent setservent setsockopt shift shmctl shmget shmread shmwrite shutdown sin sleep socket socketpair sort splice split sprintf sqrt srand stat study sub substr symlink syscall sysopen sysread sysseek system syswrite tell telldir tie tied time times tr truncate uc ucfirst umask undef unlink unpack unshift untie use utime values vec wait waitpid wantarray warn write y/;
+
+	# all the web pages are lowercase
+	$func = lc($func) unless $func eq "-X";
+
+	# make sure the function exists, or the perldoc for the function (think all the -x functions)
+	return "No documentation for perl function '$func' found" unless grep { $func eq $_ } @funcs;
+
+	# create a url
+	my $url = "http://perldoc.perl.org/functions/" . $func . ".html";
+	my $short_url = shorten_url($self, $url);	
+	
+	return "Documentation for '$func' can be found here: $short_url";
+	
+}
+
+
+sub magic8ball
+{
+
+	my $balls = [ "Ask again later", "Definite maybe", "Well, sure", "Flip a coin", "Don't ask me", "You never know", "No", "Yes" ];
+	return "Magic 8ball says: " . $balls->[rand 8];
+
+}
+
+
+sub retard
+{
+
+	my ($self, $who) = @_;
+	
+	my $saying =  [ "WHY USE PEARL!?  C IS FASTAR?!?!?",
+			 		"How I can make teh web wit pearl?!?!",
+					"CAN I BORROW SOME OF UR BRAINPOWER PLZ? I DONT WANNA LERN PEARL!@!",
+				 	"Hi, can I paste this very long script I downloaded and let you fix it for me plz??",
+					"OMG u r teh gr8est 10x thx k bye!" ] -> [rand 5];
+
+	if (defined $who)
+	{
+
+		return "<$who> $saying";
+
+	}
+	else
+	{
+
+		return $saying;
+
+	}
+
+}
+
+
+sub fortune
+{
+
+	my ($self) = @_;
+
+	my $fortune_prog = $self->bot_cfg("FORTUNE_PROG");
+
+	return "FORTUNE_PROG isn't defined in my configuration.  I can't do fortunes, sorry.  Tell my owner to fix me!" unless $fortune_prog;
+
+	my $fortune = qx($fortune_prog);
+
+	$fortune =~ s/\s*\n\s*/ /g;
+
+	return $fortune;
+
+}
+
+
+sub perldoc_q
+{
+	
+	my ($self, $term) = @_;
+
+	$term =~ tr/ /+/;
+
+	my $url = "http://chrisangell.org/cgi-bin/perldoc_q.cgi?term=$term";
+	my $short_url = shorten_url($self, $url);
+	
+	return "Search results can be found here: $short_url";
+	
+}
+
+
+{
+
+# used for caching previously shortened URLs
+my %url_cache;
+
+sub shorten_url
+{
+
+	my ($self, $url) = @_;
+	
+	my $short_url;
+
+	# which services will be used
+	my @services = qw(WWW::Shorten::Metamark WWW::Shorten::V3 WWW::Shorten::SnipURL WWW::Shorten::BabyURL WWW::Shorten::TinyURL);
+	
+	# has this url been shortened previously by the bot?
+	if (exists $url_cache{$url})
+	{
+
+		return $url_cache{$url};
+
+	}
+	else
+	{
+
+		# try very hard to make a shorter link
+		# try all services before giving up
+		
+		SERVICE: for my $service (@services)
+		{
+
+			# needs eval to require something in a $scalar
+			eval "require $service";
+			
+			no strict 'refs';
+			
+			local $SIG{ALRM} = sub { goto SERVICE };
+			alarm(5);	# five second timeout
+
+			$short_url = &{"${service}::makeashorterlink"}($url);
+
+			alarm(0);	# turn off
+			
+			use strict 'refs';
+			
+			# success! a shorter link was made
+			last if defined $short_url and $short_url ne $url;
+			
+			# otherwise keep looping
+			
+		}
+		
+		# cache only if $short_url doesn't match and if $short_url is defined
+		if (defined $short_url and $short_url ne $url)
+		{
+
+			$url_cache{$url} = $short_url;
+
+		}
+
+		return defined $short_url ? $short_url : $url;
+
+	}
+
+}
+
+}
+
+
+sub ignore_user_check
+{
+
+	# check if a user is ignored
+
+	my ($self, $who) = @_;
+
+	return $self->contains($who, [split /\s+/, $self->bot_cfg("IGNORED_USERS") || ""]);
+
+}   
+
+sub ignore_channel_check
+{
+
+	# check if all users on a channel are ignored
+
+	my ($self, $who) = @_;
+
+	return $self->contains($who, [split /\s+/, $self->bot_cfg("IGNORED_CHANNELS") || ""]);
+
+}   
+
+sub contains
+{   
+
+	# case insensitive match
+
+	my ($self, $thing, $aref) = @_;
+
+	$thing = lc $thing;
+
+	for (@$aref)
+	{
+
+		$thing eq lc $_ and return 1;
+
+	}
+
+	return;
+
+}
+
+
+sub karma_check
+{
+
+	# look for karma in a string
+	
+	my ($self)	= @_;
+	local $_	= $self->get("query");
+	
+	# don't call someone an idiot more than once per line
+	# if they try to "karma themselves
+	my $called_an_idiot = 0;
+	
+	# plus or minus regex - makes below reges cleaner
+	my $pm = qr/\+{2,}|-{2,}/;
+	
+	# match (foo bar)++ and foobar++, respectively
+	# match repeatedly; "foobar++ foobar++" will incriment foobar twice
+	while ( /(?:\(\s*(.+)\s*\)($pm))|(?:(\S+?)($pm))/g )
+	{
+
+		my ($thing, $plus_or_minus) = ($1 || $3, $2 || $4);
+
+		# add to or subtract from
+		my $add_or_sub = index($plus_or_minus, "+") != -1 ? "ADD" : "SUBTRACT";
+		
+		# is someone trying to karma themself?
+		# if so, let them know that is a no-no
+		# but only tell them once
+		if (lc $thing eq lc $self->get("user_nick") and $add_or_sub eq "ADD" and not $called_an_idiot)
+		{
+
+			$called_an_idiot = 1;
+			
+			$self->karma(SUBTRACT => $thing);
+			
+			my $chan = $self->get("chan");
+			$self->act( SAY => $chan, "What kind of idiot karmas himself?  Your kind of idiot!"); 
+			
+		}
+		else
+		{
+		
+			$self->karma($add_or_sub, $thing);
+
+		}
+			
+	}
+
+}
+
+
+sub uri_in_msg_check
+{
+
+	my ($self, $text, $chan) = @_;
+
+	my @uris;
+
+	my $finder = URI::Find::Schemeless->new( sub { push @uris, shift } );
+	$finder->find(\$text);
+
+	# store only the first URL seen in the channel
+	if ($uris[0])
+	{
+
+		$self->chan_url( SET => $chan, $uris[0] );
+
+	}
+
+}
+
+
+{
+
+# scope appropriately so variable will remain between calls to chan_url
+my %chan_data;
+
+sub chan_url
+{
+
+	my $self = shift;
+	my $do = lc shift;
+	
+	if ($do eq "set")
+	{
+
+		my ($chan, $url) = @_;
+		$chan_data{$chan} = $url;
+
+	}
+	elsif ($do eq "get")
+	{
+
+		my ($chan) = @_;
+		return $chan_data{$chan};
+		
+	}
+	else
+	{
+
+		die "bad do parameter '$do'";
+
+	}
+
+}
+
+}
+
+
+# do reverse lookups on phone numbers
+sub revlookup
+{
+
+	my ($self, $raw_num) = @_;
+
+	# make a copy to work on
+	my $phone_num = $raw_num;
+	
+	# be able to specify numbers using letters, like "702-BEDTIME"
+	$phone_num =~ tr/abcdefghijklmnopqrstuvqxyzABCDEFGHIJKLMNOPQRSTUVQXYZ/2223334445556667777888999922233344455566677778889999/;
+	
+	# delete all non-digits from the string;
+	$phone_num =~ tr/0-9//cd;
+
+	my ($area_code, $prefix_suffix) = $phone_num =~ /^1?(\d{3})(\d{7})$/ or return "Bad number: $raw_num\n";
+
+	my $html_results = LWP::Simple::get("http://www.phonenumber.com/10006/search/Reverse_Phone?npa=$area_code&phone=$prefix_suffix");
+	
+	defined $html_results or return "That function is broken for now, try back later (LWP couldn't download from the phonenumber.com website, or encountered an error)";
+	
+	# rip the information out
+	my ($params) = $html_results =~ /^\s*oas_query\s*=\s*'\?(.+?)'/m or return "That function is broken for now, try back later (regex failed)";
+	
+	# use the CGI module to turn something like "foo=bar&zig=zag" into a hash
+	my %params = CGI->new($params)->Vars;
+
+	return "No results for '$raw_num'.  It's probably unlisted" unless $params{_RM_HTML_STATE_ESC_};
+
+	# remove escapes in $params{_RM_HTML_PHONE_ESC_} so the number looks preetier
+	$params{_RM_HTML_PHONE_ESC_} =~ y!\\!!d;
+	
+	return "Phonenumber.com listing for $params{_RM_HTML_PHONE_ESC_}: $params{_RM_HTML_FIRST_ESC_} $params{_RM_HTML_LAST_ESC_}, $params{_RM_HTML_ADDRESS_ESC_}, $params{_RM_HTML_CITY_ESC_}, $params{_RM_HTML_STATE_ESC_} $params{_RM_HTML_ZIP_ESC_}\n";
+
+}
+
+
+sub geoip
+{
+
+	my ($self, $record) = @_;
+	
+	my $g = Geo::IP->open("/home/chrisangell/etc/chrisbot/v3/data/GeoIP.dat") or die "problem opening GeoIP database: $@ $!";
+	
+	my $result;
+	
+	if ($record =~ /[^0-9.]/)
+	{
+	
+		$result = $g->country_name_by_name($record);
+
+	}
+	else
+	{
+		
+		$result = $g->country_name_by_addr($record);
+
+	}
+
+	return $result ? "Record for $record: $result" : "Sorry, there is no entry for $record in the database";
+
+}
+
+sub jargon
+{
+
+	my ($self, $term) = @_;
+
+	if (defined (my $filename = $self->bot_cfg("JARGON_FILE")))
+	{
+
+		open my $fh, $filename
+			or return "Problem tying %entries (bad JARGON_FILE entry in bot config?): $!";
+
+		$term = lc $term;
+		
+		while (<$fh>)
+		{
+
+			
+			my ($real_term, $entry) = /^(.+?) => (.+)\s*$/; # grab the term
+
+			if (lc $real_term eq $term)
+			{
+
+				# hack text off in extensive entries
+				$entry =~ s/^(.{270}).*$/$1 (etc.)/ if length $entry > 280;
+				
+				return "Jargon definition for \"$real_term\" - $entry";
+				
+			}
+
+		}
+
+		# if we got here, the term wasn't found
+		return "Term \"$term\" not found in the Jargon file";
+
+	}
+	else
+	{
+
+		return "Missing JARGON_FILE entry in bot config";
+
+	}
+
+}
+
+1;

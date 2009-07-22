@@ -1,0 +1,4 @@
+#!/bin/zsh
+
+sudo killall -rI freenode-perlbot
+sudo nohup ./freenode-perlbot.pl &!

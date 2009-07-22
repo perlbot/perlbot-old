@@ -1,0 +1,15 @@
+--- Chrisbot/Pipeline.pm.orig	2007-06-14 14:21:27.000000000 -0300
++++ Chrisbot/Pipeline.pm	2007-06-14 14:38:26.000000000 -0300
+@@ -102,6 +102,12 @@
+ 		$self->act( SAY => $chan, $self->revlookup($1) );
+ 
+ 	}
++	elsif ( /^(?:utf8|unicode)[:\s]?\s*(.+)$/ )
++	{
++
++		$self->act( SAY => $chan, $self->unicode($1) );
++
++	}
+ 	# reverse text
+ 	elsif ( /^reverse\s+(.+?)\s*$/i )
+ 	{

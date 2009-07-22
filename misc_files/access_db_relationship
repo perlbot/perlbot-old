@@ -1,0 +1,7 @@
+ENTITY USERS
+users        level     email	
+varchar(pk)  smallint  varchar
+
+ENTITY USERMASKS
+users        mask
+varchar(fk)  varchar
