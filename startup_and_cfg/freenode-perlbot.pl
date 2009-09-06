@@ -3,7 +3,7 @@
 # perlbot's startup file
 
 use strict;
-use lib "/home/ryan/perlbot/chrisbot/v3";
+use lib "/home/simcop/perlbot/";
 #use lib "/home/ryan/perlbot/chrisbot/v3/lib/perl/5.10.0";
 use Chrisbot;
 

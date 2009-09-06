@@ -501,7 +501,7 @@ sub geoip
 
 	my ($self, $record) = @_;
 	
-	my $g = Geo::IP->open("/home/ryan/perlbot/chrisbot/v3/data/GeoIP.dat") or die "problem opening GeoIP database: $@ $!";
+	my $g = Geo::IP->open("/home/simcop/perlbot/data/GeoIP.dat") or die "problem opening GeoIP database: $@ $!";
 	
 	my $result;
 	

@@ -11,7 +11,7 @@ package Chrisbot;
 use strict;
 use warnings;
 
-use lib "/home/ryan/perlbot/chrisbot/v3";
+use lib "/home/simcop/perlbot/";
 
 use Carp qw(carp cluck croak confess);
 use IO::Socket;
